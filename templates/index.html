@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} — Espaces{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Espaces hébergés</h1>
+  <p class="lead">Disque, webapp et RAM · part recalculée automatiquement.</p>
+</section>
+
+{% if not projects %}
+  <p class="empty-state">
+    Aucun projet pour l’instant.
+    Un admin doit lancer la synchronisation (<code>du</code>).
+  </p>
+{% else %}
+  <ul class="project-list">
+    {% for p in projects %}
+      <li class="project-row">
+        <div class="project-main">
+          <h2>{{ p.display_name }}</h2>
+          <p class="project-meta">
+            <code>{{ p.folder_name }}/</code>
+            · {{ p.size_human }}
+            · {{ p.billed_gb }}&nbsp;Go
+            · disque {{ '%.2f'|format(p.price_disk) }}&nbsp;€
+            · webapp+RAM {{ '%.2f'|format(p.price_shared) }}&nbsp;€
+          </p>
+        </div>
+        <div class="project-side">
+          <p class="project-price">{{ '%.2f'|format(p.monthly_price) }}&nbsp;€<span>/mois</span></p>
+          {% if p.is_paid_this_month %}
+            <span class="badge badge-ok">Payé</span>
+          {% elif p.email %}
+            <span class="badge badge-warn">En attente</span>
+          {% endif %}
+          <a class="btn-small" href="{{ url_for('pay', project_id=p.id) }}">Payer</a>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<p class="tariff-hint">{{ pricing_text }}</p>
+{% endblock %}

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Facture {{ invoice.invoice_number }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #14221c;
+      --muted: #4d5f56;
+      --line: #c9d5ce;
+      --accent: #0f6b5c;
+      --paper: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Source Sans 3", sans-serif;
+      color: var(--ink);
+      background: #e8eee9;
+    }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      padding: 0.85rem;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+    .toolbar a, .toolbar button {
+      font: inherit;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .toolbar .primary {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .sheet {
+      width: min(780px, calc(100% - 2rem));
+      margin: 1.5rem auto 2.5rem;
+      background: var(--paper);
+      padding: 2.25rem;
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(20,34,28,0.1);
+    }
+    h1 {
+      font-family: "Fraunces", Georgia, serif;
+      margin: 0 0 0.25rem;
+      font-size: 1.9rem;
+    }
+    .meta { color: var(--muted); margin: 0 0 1.75rem; }
+    .parties {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+    .party h2 {
+      margin: 0 0 0.35rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .party p { margin: 0; line-height: 1.45; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 0.4rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+    td.num, th.num { text-align: right; }
+    .total {
+      display: flex;
+      justify-content: flex-end;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none !important; }
+      .sheet {
+        width: 100%;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
+    }
+    @media (max-width: 640px) {
+      .parties { grid-template-columns: 1fr; }
+      .sheet { padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="primary" type="button" onclick="window.print()">Imprimer / PDF</button>
+    <a href="{{ url_for('index') }}">Retour</a>
+  </div>
+
+  <article class="sheet">
+    <h1>Facture</h1>
+    <p class="meta">
+      N° {{ invoice.invoice_number }}
+      · Émise le {{ invoice.issued_at[:10] }}
+      · Période {{ invoice.billing_month }}
+    </p>
+
+    <div class="parties">
+      <div class="party">
+        <h2>Émetteur</h2>
+        <p>
+          <strong>{{ issuer_name }}</strong><br>
+          {{ issuer_details }}
+        </p>
+      </div>
+      <div class="party">
+        <h2>Client</h2>
+        <p>
+          <strong>{{ invoice.client_name }}</strong><br>
+          {% if invoice.client_email %}{{ invoice.client_email }}<br>{% endif %}
+          Dossier <code>{{ invoice.folder_name }}/</code>
+        </p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Désignation</th>
+          <th class="num">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            Hébergement mutualisé — part disque<br>
+            <span style="color:var(--muted)">{{ invoice.size_human }} · {{ invoice.billed_gb }} Go facturés</span>
+          </td>
+          <td class="num">{{ '%.2f'|format(invoice.amount_disk) }} €</td>
+        </tr>
+        <tr>
+          <td>
+            Hébergement mutualisé — part webapp + RAM / CPU
+          </td>
+          <td class="num">{{ '%.2f'|format(invoice.amount_shared) }} €</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="total">Total TTC : {{ '%.2f'|format(invoice.amount) }} €</p>
+    {% if invoice.payment_method %}
+      <p class="meta">
+        Paiement :
+        {% if invoice.payment_method == 'stripe' %}carte (Stripe)
+        {% elif invoice.payment_method == 'manual' %}confirmation manuelle
+        {% else %}{{ invoice.payment_method }}{% endif %}
+      </p>
+    {% endif %}
+
+    <p class="footer">{{ invoice_footer }}</p>
+  </article>
+</body>
+</html>

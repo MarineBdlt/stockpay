@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} — Admin{% endblock %}
+
+{% block content %}
+<section class="hero hero-compact admin-hero">
+  <div>
+    <h1>Tableau de bord</h1>
+    <p class="lead">Scan : <code>{{ scan_root }}</code></p>
+  </div>
+  <a class="btn-ghost-inline" href="{{ url_for('admin_logout') }}">Déconnexion</a>
+</section>
+
+{% if circuit.go_live_ready %}
+  <p class="badge badge-ok" style="margin-bottom:1rem;">Circuit live prêt</p>
+{% elif circuit.stripe_mode == 'test' %}
+  <p class="admin-alert">Stripe en mode <strong>test</strong> — passe en <code>sk_live_</code> pour de vrais paiements.</p>
+{% elif not circuit.stripe_enabled %}
+  <p class="admin-alert">Stripe pas encore branché — le circuit manuel + factures fonctionnent déjà. Clés après mise en ligne.</p>
+{% endif %}
+
+<article class="admin-card billing-card">
+  <h2>Circuit paiement (après mise en ligne)</h2>
+  <p class="project-meta">
+    Mode Stripe :
+    {% if circuit.stripe_mode == 'live' %}<strong>live</strong>
+    {% elif circuit.stripe_mode == 'test' %}<strong>test</strong>
+    {% else %}<strong>éteint</strong> (confirmation manuelle OK){% endif %}
+    · Webhook cible : <code>{{ circuit.webhook_url_hint }}</code>
+  </p>
+  <ol class="circuit-list">
+    {% for c in circuit.checks if not c.get('info_only') %}
+      <li class="{% if c.ok %}is-ok{% else %}is-todo{% endif %}">
+        <span class="circuit-mark">{% if c.ok %}✓{% else %}○{% endif %}</span>
+        <span>
+          <strong>{{ c.label }}</strong>
+          {% if c.get('optional_until_online') and not c.ok %}
+            <em>(à faire une fois le site en ligne)</em>
+          {% endif %}
+          <br><span class="muted tiny">{{ c.hint }}</span>
+        </span>
+      </li>
+    {% endfor %}
+  </ol>
+  <p class="muted tiny">
+    Ordre recommandé : 1) déployer le site · 2) renseigner <code>PUBLIC_BASE_URL</code>
+    · 3) clés <code>sk_live_</code> · 4) webhook Stripe vers l’URL ci-dessus · 5) petit paiement réel.
+  </p>
+</article>
+
+<div class="admin-actions">
+  <form method="post" action="{{ url_for('admin_sync') }}">
+    <button type="submit" class="btn-primary btn-inline">
+      Synchroniser (<code>du -sh -- */</code>)
+    </button>
+  </form>
+  <form method="post" action="{{ url_for('admin_reminders') }}">
+    <button type="submit" class="btn-secondary">Envoyer avis / rappels dus</button>
+  </form>
+  <form method="post" action="{{ url_for('admin_reminders') }}">
+    <input type="hidden" name="force" value="1">
+    <button type="submit" class="btn-ghost-inline">Forcer tous les rappels</button>
+  </form>
+</div>
+
+<article class="admin-card billing-card">
+  <h2>Coûts PythonAnywhere &amp; % à facturer</h2>
+  <p class="project-meta">{{ pricing_text }}</p>
+  <form class="admin-form" method="post" action="{{ url_for('admin_billing') }}">
+    <div class="admin-fields billing-fields">
+      <div class="field">
+        <label for="cost_disk">Disque (€ / mois)</label>
+        <input id="cost_disk" name="cost_disk" type="number" min="0" step="0.01" value="{{ '%.2f'|format(settings.cost_disk) }}" required>
+      </div>
+      <div class="field">
+        <label for="cost_webapp">Webapp (€ / mois)</label>
+        <input id="cost_webapp" name="cost_webapp" type="number" min="0" step="0.01" value="{{ '%.2f'|format(settings.cost_webapp) }}" required>
+      </div>
+      <div class="field">
+        <label for="cost_ram">RAM / CPU (€ / mois)</label>
+        <input id="cost_ram" name="cost_ram" type="number" min="0" step="0.01" value="{{ '%.2f'|format(settings.cost_ram) }}" required>
+      </div>
+      <div class="field">
+        <label for="billing_percent">% à facturer</label>
+        <input id="billing_percent" name="billing_percent" type="number" min="0" max="200" step="1" value="{{ '%.0f'|format(settings.billing_percent) }}" required>
+      </div>
+    </div>
+    <p class="muted tiny">
+      Total hébergeur {{ '%.2f'|format(hosting_total) }}&nbsp;€ ·
+      à répartir {{ '%.2f'|format(billable) }}&nbsp;€
+      (disque au prorata des Go, webapp+RAM à parts égales).
+      Ex. 80&nbsp;% = tu prends 20&nbsp;% à ta charge.
+    </p>
+    <div class="admin-buttons">
+      <button type="submit" class="btn-secondary">Enregistrer et recalculer les tarifs</button>
+    </div>
+  </form>
+</article>
+
+<article class="admin-card billing-card">
+  <h2>Ajouter un projet / dossier</h2>
+  <p class="project-meta">
+    Quand tu héberges un nouveau dossier sur PythonAnywhere, ajoute-le ici
+    (ou via <code>flask add-project mon_dossier</code>).
+  </p>
+  <form class="admin-form" method="post" action="{{ url_for('admin_add_project') }}">
+    <div class="admin-fields billing-fields">
+      <div class="field">
+        <label for="folder_name">Nom du dossier</label>
+        {% if untracked %}
+          <input id="folder_name" name="folder_name" type="text" list="untracked_folders" required placeholder="ex. nouveau_site" autocomplete="off">
+          <datalist id="untracked_folders">
+            {% for name in untracked %}
+              <option value="{{ name }}"></option>
+            {% endfor %}
+          </datalist>
+        {% else %}
+          <input id="folder_name" name="folder_name" type="text" required placeholder="ex. nouveau_site" autocomplete="off">
+        {% endif %}
+      </div>
+      <div class="field">
+        <label for="new_display_name">Nom affiché</label>
+        <input id="new_display_name" name="display_name" type="text" placeholder="optionnel">
+      </div>
+      <div class="field">
+        <label for="new_email">E-mail</label>
+        <input id="new_email" name="email" type="email" placeholder="client@exemple.com">
+      </div>
+      <div class="field">
+        <label for="require_dir">Dossier sur le disque</label>
+        <select id="require_dir" name="require_dir">
+          <option value="1" selected>Doit exister</option>
+          <option value="0">Autoriser même absent</option>
+        </select>
+      </div>
+    </div>
+    {% if untracked %}
+      <p class="muted tiny">Dossiers détectés non suivis : {{ untracked|join(', ') }}</p>
+    {% endif %}
+    <div class="admin-buttons">
+      <button type="submit" class="btn-secondary">Ajouter le projet</button>
+    </div>
+  </form>
+</article>
+
+{% if unpaid %}
+  <p class="admin-alert">{{ unpaid|length }} projet(s) impayé(s) avec e-mail.</p>
+{% endif %}
+
+{% if not projects %}
+  <p class="empty-state">Aucun dossier. Lancez une synchronisation.</p>
+{% else %}
+  <div class="admin-list">
+    {% for p in projects %}
+      <article class="admin-card {% if not p.active %}is-inactive{% endif %}">
+        <header class="admin-card-head">
+          <div>
+            <h2>{{ p.display_name }}</h2>
+            <p class="project-meta">
+              <code>{{ p.folder_name }}/</code>
+              · {{ p.size_human }}
+              · {{ p.billed_gb }} Go
+              · disque {{ '%.2f'|format(p.price_disk) }}&nbsp;€
+              · partagée {{ '%.2f'|format(p.price_shared) }}&nbsp;€
+              · <strong>{{ '%.2f'|format(p.monthly_price) }} €/mois</strong>
+              {% if not p.active %}<span class="badge">inactif</span>{% endif %}
+              {% if p.is_paid_this_month %}
+                <span class="badge badge-ok">payé {{ p.paid_month }}</span>
+              {% elif p.email %}
+                <span class="badge badge-warn">impayé</span>
+              {% else %}
+                <span class="badge">sans e-mail</span>
+              {% endif %}
+            </p>
+          </div>
+        </header>
+
+        <form class="admin-form" method="post" action="{{ url_for('admin_update_project', project_id=p.id) }}">
+          <div class="admin-fields">
+            <div class="field">
+              <label for="display_name_{{ p.id }}">Nom affiché</label>
+              <input id="display_name_{{ p.id }}" name="display_name" type="text" value="{{ p.display_name }}">
+            </div>
+            <div class="field">
+              <label for="email_{{ p.id }}">E-mail (avis &amp; rappels)</label>
+              <input id="email_{{ p.id }}" name="email" type="email" value="{{ p.email or '' }}" placeholder="client@exemple.com">
+            </div>
+          </div>
+          <div class="admin-buttons">
+            <button type="submit" name="action" value="save" class="btn-secondary">Enregistrer</button>
+            <button type="submit" name="action" value="mark_unpaid" class="btn-small">Marquer impayé</button>
+            <button type="submit" name="action" value="remind" class="btn-small">Envoyer un mail</button>
+            <a class="btn-small" href="{{ url_for('pay', project_id=p.id) }}">Lien paiement</a>
+            {% if p.is_paid_this_month %}
+              <a class="btn-small" href="{{ url_for('generate_invoice', project_id=p.id) }}">Facture</a>
+            {% endif %}
+          </div>
+          {% if p.last_reminder_at %}
+            <p class="muted tiny">Dernier mail : {{ p.last_reminder_at }} (×{{ p.reminder_count }})</p>
+          {% endif %}
+        </form>
+      </article>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

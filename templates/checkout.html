@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} — Paiement{% endblock %}
+
+{% block content %}
+<section class="hero hero-compact">
+  <h1>Paiement sécurisé</h1>
+  <p class="lead">{{ project.display_name }}</p>
+</section>
+
+<div class="checkout-layout">
+  <article class="summary">
+    <h2>Récapitulatif</h2>
+    <dl class="summary-list">
+      <div>
+        <dt>Dossier</dt>
+        <dd><code>{{ project.folder_name }}/</code></dd>
+      </div>
+      <div>
+        <dt>Taille réelle</dt>
+        <dd>{{ project.size_human }}</dd>
+      </div>
+      <div>
+        <dt>Facturation</dt>
+        <dd>{{ project.billed_gb }} Go</dd>
+      </div>
+      <div>
+        <dt>Part disque</dt>
+        <dd>{{ '%.2f'|format(project.price_disk) }} €</dd>
+      </div>
+      <div>
+        <dt>Webapp + RAM</dt>
+        <dd>{{ '%.2f'|format(project.price_shared) }} €</dd>
+      </div>
+      <div>
+        <dt>Tarif</dt>
+        <dd class="summary-price">{{ '%.2f'|format(project.monthly_price) }} € / mois</dd>
+      </div>
+    </dl>
+  </article>
+
+  <div class="pay-form">
+    {% if stripe_enabled %}
+      <form method="post">
+        <div class="field">
+          <label for="email">E-mail de confirmation</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="vous@exemple.com"
+            value="{{ project.email or '' }}"
+          >
+        </div>
+        <p class="secure-note">
+          Paiement par carte via <strong>Stripe</strong> uniquement.
+          La CB est saisie sur leur page sécurisée, jamais stockée ici.
+          Le statut « payé » n’est enregistré qu’après vérification Stripe.
+        </p>
+        <button type="submit" name="action" value="stripe" class="btn-primary">
+          Payer {{ '%.2f'|format(project.monthly_price) }} € par carte
+        </button>
+      </form>
+    {% else %}
+      <p class="secure-note">
+        Paiement temporairement indisponible : Stripe n’est pas encore configuré
+        (<code>STRIPE_SECRET_KEY</code>). Aucune confirmation manuelle n’est acceptée.
+      </p>
+    {% endif %}
+    <a class="btn-ghost" href="{{ url_for('index') }}">Retour</a>
+    {% if project.is_paid_this_month %}
+      <a class="btn-ghost" href="{{ url_for('generate_invoice', project_id=project.id) }}">
+        Générer / voir la facture
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

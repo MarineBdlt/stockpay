@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} — Merci{% endblock %}
+
+{% block content %}
+<section class="success">
+  <p class="success-kicker">Paiement enregistré</p>
+  <h1>Merci !</h1>
+  <p class="lead">
+    Le projet <strong>{{ payment.project_name }}</strong>
+    ({{ payment.size_human }} · {{ payment.storage_gb }}&nbsp;Go facturés)
+    est réglé pour
+    <strong>{{ '%.2f'|format(payment.price) }}&nbsp;€ / mois</strong>.
+  </p>
+  <p class="muted">
+    Confirmation : {{ payment.email }}
+    {% if payment.method == 'stripe' %}· payé via Stripe{% elif payment.method == 'manual' %}· confirmation manuelle{% endif %}
+  </p>
+  <div class="success-actions">
+    {% if payment.project_id %}
+      {% if invoice %}
+        <a class="btn-primary" href="{{ url_for('view_invoice', token=invoice.public_token) }}">Voir la facture</a>
+      {% else %}
+        <a class="btn-primary" href="{{ url_for('generate_invoice', project_id=payment.project_id) }}">Générer une facture</a>
+      {% endif %}
+    {% endif %}
+    <a class="btn-ghost" href="{{ url_for('index') }}" style="margin-top:0.75rem;display:inline-block;">Retour aux espaces</a>
+  </div>
+</section>
+{% endblock %}
