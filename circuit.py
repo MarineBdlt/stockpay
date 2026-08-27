@@ -92,7 +92,7 @@ def circuit_status() -> dict[str, Any]:
         "webhook_url_hint": (
             f"{Config.PUBLIC_BASE_URL.rstrip('/')}/webhook/stripe"
             if Config.PUBLIC_BASE_URL
-            else "https://TON-DOMAINE/webhook/stripe"
+            else "https://TON-DOMAINE/stockpay/webhook/stripe"
         ),
         "manual_ok": False,
     }

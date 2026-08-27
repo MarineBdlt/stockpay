@@ -59,9 +59,12 @@ class Config:
     )
     MAIL_SUBJECT_PREFIX = os.environ.get("MAIL_SUBJECT_PREFIX", "[Stockpay] ")
 
-    # URL publique HTTPS du site (PythonAnywhere) — utilisée pour Stripe return/cancel
-    # Ex. https://tonuser.pythonanywhere.com  ou  https://pay.webbap.fr
+    # URL publique HTTPS du site (avec chemin si monté sous /stockpay)
+    # Ex. https://MarineBdlt.pythonanywhere.com/stockpay
+    #     https://www.webbap.fr/stockpay
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    # Préfixe WSGI (DispatcherMiddleware) — laisser vide en local
+    APPLICATION_ROOT = os.environ.get("APPLICATION_ROOT", "").rstrip("/") or None
 
     # Stripe Checkout (sk_test_… / sk_live_…). Vide = paiement manuel uniquement.
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")

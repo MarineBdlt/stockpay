@@ -44,6 +44,8 @@ from urls import absolute_url, stripe_success_url
 
 app = Flask(__name__)
 app.config.from_object(Config)
+if Config.APPLICATION_ROOT:
+    app.config["APPLICATION_ROOT"] = Config.APPLICATION_ROOT
 init_db()
 
 # Dev local derrière rien ; en prod ProxyFix est dans wsgi.py
