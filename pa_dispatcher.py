@@ -48,6 +48,7 @@ def _load_aquaviva():
         candidates.append((mod_name, attr))
     candidates.extend(
         [
+            ("booking_engine", "app"),
             ("flask_app", "app"),
             ("app", "app"),
             ("wsgi", "application"),
